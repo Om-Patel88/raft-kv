@@ -1,0 +1,22 @@
+# binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.wasm
+/bin/
+
+# runtime data
+/data/
+*.wal
+tmp/
+
+# editors / os
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
