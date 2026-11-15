@@ -100,8 +100,12 @@ func newHarness(t *testing.T, n int, opts ...harnessOpt) *harness {
 	return h
 }
 
+// openStorage returns the storage id should start on: the same
+// MemoryStorage as last time, or the WAL directory reopened.
 func (h *harness) openStorage(id string) raft.Storage {
 	if h.kind == "mem" {
+		h.mu.Lock()
+		defer h.mu.Unlock()
 		if s, ok := h.stores[id]; ok {
 			return s
 		}
@@ -115,12 +119,11 @@ func (h *harness) openStorage(id string) raft.Storage {
 }
 
 func (h *harness) start(id string) {
-	h.mu.Lock()
-	if h.nodes[id] != nil {
-		h.mu.Unlock()
+	if h.alive(id) {
 		h.t.Fatalf("start %s: already running", id)
 	}
 	st := h.openStorage(id)
+	h.mu.Lock()
 	h.stores[id] = st
 	h.mu.Unlock()
 
