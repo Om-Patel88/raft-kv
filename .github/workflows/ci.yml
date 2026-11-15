@@ -30,4 +30,4 @@ jobs:
         run: go test -race ./...
 
       - name: wasm build
-        run: GOOS=js GOARCH=wasm go build ./raft/ ./simnet/ ./kv/
+        run: GOOS=js GOARCH=wasm go build ./raft/ ./simnet/ ./kv/ ./cmd/raftsim/
