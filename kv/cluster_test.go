@@ -248,6 +248,9 @@ type tclient struct {
 	id     string
 	seq    uint64
 	leader string
+	// wander makes every request start at a random node instead of the
+	// last known leader, so a stale leader gets asked too
+	wander bool
 }
 
 func (c *cluster) client(id string) *tclient { return &tclient{c: c, id: id} }
@@ -259,6 +262,9 @@ func (tc *tclient) do(req Request, timeout time.Duration) (Response, error) {
 	req.ClientID, req.Seq = tc.id, tc.seq
 	deadline := time.Now().Add(timeout)
 	try := tc.leader
+	if tc.wander {
+		try = ""
+	}
 	var lastErr error
 	for time.Now().Before(deadline) {
 		if try == "" {
