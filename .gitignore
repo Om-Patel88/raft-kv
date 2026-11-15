@@ -20,3 +20,7 @@ tmp/
 *.swp
 .DS_Store
 Thumbs.db
+
+# web demo build output
+/web/raftsim.wasm
+/web/wasm_exec.js
