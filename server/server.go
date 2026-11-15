@@ -11,6 +11,8 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
+	"runtime/debug"
 	"sort"
 	"strconv"
 	"time"
@@ -104,7 +106,7 @@ func New(cfg Config) (*Server, error) {
 	}
 	s := &Server{cfg: cfg, addr: addr, store: store, transport: tr, logger: cfg.Logger}
 	s.http = &http.Server{
-		Handler:           s.Handler(),
+		Handler:           crashOnPanic(s.Handler()),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	return s, nil
@@ -165,6 +167,25 @@ func (s *Server) logf(format string, args ...any) {
 	if s.logger != nil {
 		s.logger.Printf(format, args...)
 	}
+}
+
+// net/http recovers from a panicking handler and keeps serving. That is
+// the wrong thing here: raft panics when stable storage fails, and a node
+// that carries on afterwards may forget a vote or entry it already
+// acknowledged. So a panic in any handler takes the process down.
+func crashOnPanic(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if v := recover(); v != nil {
+				if v == http.ErrAbortHandler {
+					panic(v)
+				}
+				fmt.Fprintf(os.Stderr, "panic serving %s %s: %v\n%s", r.Method, r.URL.Path, v, debug.Stack())
+				os.Exit(2)
+			}
+		}()
+		h.ServeHTTP(w, r)
+	})
 }
 
 func rpcHandler[A, R any](handle func(*A) *R) http.HandlerFunc {
