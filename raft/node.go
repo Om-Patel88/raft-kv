@@ -1,3 +1,6 @@
+// Package raft is an implementation of the Raft consensus algorithm as
+// described in "In Search of an Understandable Consensus Algorithm"
+// (Ongaro and Ousterhout). Section numbers in comments refer to that paper.
 package raft
 
 import (
@@ -229,6 +232,11 @@ func (n *Node) becomeFollower(term uint64) {
 	}
 	if n.role != Follower {
 		n.logf("stepping down")
+		if n.role == Leader {
+			// the deadline is left over from before we won; without this
+			// an ex-leader would stand for election almost immediately
+			n.resetElectionTimer()
+		}
 		n.role = Follower
 	}
 	if changed {
