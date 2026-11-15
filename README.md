@@ -1,5 +1,7 @@
 # raft-kv
 
+[![ci](https://github.com/Om-Patel88/raft-kv/actions/workflows/ci.yml/badge.svg)](https://github.com/Om-Patel88/raft-kv/actions/workflows/ci.yml)
+
 A distributed key-value store built on my own implementation of the [Raft](https://raft.github.io/raft.pdf) consensus algorithm, written in Go with only the standard library.
 
 A cluster of nodes keeps a replicated log. As long as a majority of them are up and can talk to each other, the store keeps accepting reads and writes, and it never returns stale or conflicting data, even while nodes crash, restart or get cut off from each other.
