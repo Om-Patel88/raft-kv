@@ -148,6 +148,9 @@ func (s *Sim) Messages() []Message {
 	defer s.msgMu.Unlock()
 	out := s.msgs
 	s.msgs = nil
+	if out == nil {
+		out = []Message{}
+	}
 	return out
 }
 
@@ -641,11 +644,27 @@ func (c *cluster) state() State {
 			} else {
 				ps.Status = "lost"
 			}
-		} else if applied > p.Index {
+		} else if applied > p.Index || committedOther(st.Nodes, p.Index, p.Term) {
 			ps.Status = "lost"
 		}
 		st.Proposals = append(st.Proposals, ps)
 	}
 	c.mu.Unlock()
 	return st
+}
+
+// committedOther reports whether some live node has committed a different
+// entry (usually a new leader's no-op) at index.
+func committedOther(nodes []NodeState, index, term uint64) bool {
+	for _, n := range nodes {
+		if !n.Alive || n.Raft.CommitIndex < index {
+			continue
+		}
+		for _, e := range n.Raft.RecentEntries {
+			if e.Index == index && e.Term != term {
+				return true
+			}
+		}
+	}
+	return false
 }

@@ -22,6 +22,13 @@ func waitFor(t *testing.T, s *Sim, what string, cond func(State) bool) State {
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
+	st := s.State()
+	for _, n := range st.Nodes {
+		t.Logf("%s alive=%v %s term=%d commit=%d last=%d applied=%d data=%v", n.ID, n.Alive, n.Raft.Role, n.Raft.Term, n.Raft.CommitIndex, n.Raft.LastIndex, n.Applied, n.Data)
+	}
+	for _, p := range st.Proposals {
+		t.Logf("proposal %d %q on %s at %d/%d: %s", p.Seq, p.Text, p.Node, p.Index, p.Term, p.Status)
+	}
 	t.Fatalf("timed out waiting for %s", what)
 	return State{}
 }
@@ -182,7 +189,14 @@ func TestKillRestartRace(t *testing.T) {
 		return node(st, "n1").Alive && !node(st, "n2").Alive
 	})
 	s.SetSpeed(6)
-	// the speed change restarts every node, so retry until a leader takes it
-	waitFor(t, s, "write accepted after speed change", func(State) bool { return s.Propose("set k v", "").OK })
-	waitFor(t, s, "write lands", converged(map[string]string{"k": "v"}))
+	// Every node restarts for the speed change, so a write can land on a
+	// leader that is about to be replaced. Retry until one sticks, the way
+	// a real client would.
+	want := map[string]string{"k": "v"}
+	waitFor(t, s, "write lands after speed change", func(st State) bool {
+		if n := len(st.Proposals); n == 0 || st.Proposals[n-1].Status == "lost" {
+			s.Propose("set k v", "")
+		}
+		return converged(want)(st)
+	})
 }
